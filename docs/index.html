@@ -347,9 +347,7 @@
     if (!times.length) when = "TID MEDDELAS SENARE";
     else if (pool) when = times.length > 1 ? `NEDSLAG ${times[0]}–${times[times.length - 1]}` : `NEDSLAG ${times[0]}`;
     else when = `NEDSLAG ${times[0]}`;
-    const ft = group.matches.find((m) => hhmm(m.start));
-    const meet = ft && ft.meet && ft.meet < hhmm(ft.start) ? `   ·   SAMLING ${ft.meet}` : "";
-    text(g, when + meet, W / 2, iy, 800, story ? 62 : 46, C.gold, "center", W - 140);
+    text(g, when, W / 2, iy, 800, story ? 62 : 46, C.gold, "center", W - 140);
     iy += story ? 70 : 48;
     const place = [first.location, first.series].filter(Boolean).join("  ·  ");
     text(g, place, W / 2, iy, 500, story ? 36 : 28, C.mist, "center", W - 160, false, "Barlow");
