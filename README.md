@@ -1,5 +1,16 @@
 # HC Wettern Matchaffisch
 
+## 👉 Öppna sidan: https://asajakt.github.io/hcwettern-matchaffisch/
+
+1. Välj **Lag** i den översta listan (t.ex. A-laget eller U12 - Team 14/15).
+2. Välj **Match** i listan under. Där visas lagets kommande matcher med datum, tid och motståndare. Bocka i *Visa även spelade matcher* om du vill se äldre matcher.
+3. Välj format: **Inlägg 1:1** eller **Story 9:16**.
+4. Tryck på **Ladda ner** för att spara bilden, eller **Dela** för att skicka den direkt från mobilen.
+
+Direktlänk till en viss match: `https://asajakt.github.io/hcwettern-matchaffisch/?match=<match-id>`. Länken kopieras när du trycker på **Dela** på en dator.
+
+---
+
 Webbsida där vem som helst i föreningen väljer lag och match och laddar ner en färdig matchaffisch (1:1 för inlägg eller 9:16 för story) med båda klubbarnas loggor.
 
 ## Hur det fungerar
