@@ -28,6 +28,7 @@
     --accent: #3B73D9; --gold: #D9B866; --focus: #8DB4FF; color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; display: grid; gap: 24px; }
   header { display: flex; align-items: center; gap: 14px; }
@@ -102,6 +103,10 @@
         <select id="match"></select>
       </label>
       <label class="check"><input type="checkbox" id="past"> Visa även spelade matcher</label>
+
+      <label class="field" id="priceRow" hidden>Entré (kr)
+        <input type="text" id="price" inputmode="numeric" maxlength="4" value="60" placeholder="Tomt = visas inte">
+      </label>
 
       <div class="opps-wrap">
         <div class="lbl" style="margin-bottom:6px">Motståndare</div>
@@ -204,6 +209,7 @@
     $("past").addEventListener("change", () => fillGroups($("match").value));
     $("match").addEventListener("change", selectGroup);
     ["title", "extra"].forEach((id) => $(id).addEventListener("input", draw));
+    $("price").addEventListener("input", () => { $("price").value = $("price").value.replace(/\D/g, ""); draw(); });
     document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => setFormat(b.dataset.fmt)));
     $("addBtn").addEventListener("click", addClub);
     if (MOBILE) $("download").textContent = "Spara bild";
@@ -232,6 +238,8 @@
     selectGroup();
   }
 
+  // A-laget tar entré på hemmamatcher – visa fältet bara då, så att det inte glöms
+  function chargesEntry() { return !!group && group.team === "A-laget" && group.matches.some((m) => m.homeGame); }
   function selectGroup() {
     group = groups.find((g) => g.key === $("match").value) || null;
     opps = [];
@@ -240,6 +248,7 @@
       if (!o) opps.push(o = { club: m.opponentClub, times: [], on: true });
       if (hhmm(m.start) && !o.times.includes(hhmm(m.start))) o.times.push(hhmm(m.start));
     }
+    $("priceRow").hidden = !chargesEntry();
     renderOpps(); draw();
   }
 
@@ -317,11 +326,14 @@
     else when = `NEDSLÄPP ${times[0]}`;
     const place = [first.location, first.series].filter(Boolean).join("  ·  ");
     const extra = $("extra").value.trim();
+    const price = $("price").value.trim();
+    const entry = chargesEntry() && price ? `ENTRÉ ${price} KR` : "";
     const maxW = W - (story ? 170 : 150);
     const info = [
       { lines: [date], size: story ? 104 : 76, weight: 900, color: C.cream, shadow: true },
       { lines: [when], size: story ? 62 : 46, weight: 800, color: C.gold },
       place && { ...wrap(g, place, 500, story ? 36 : 28, "Barlow", maxW, 2, story ? 28 : 22), weight: 500, color: C.mist, family: "Barlow" },
+      entry && { lines: [entry], size: story ? 54 : 40, weight: 800, color: C.cream, gap: story ? 16 : 10 },
       extra && { ...wrap(g, extra, 700, story ? 48 : 32, "Barlow", maxW, 2, story ? 30 : 22), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: story ? 34 : 20 },
     ].filter(Boolean);
     for (const b of info) if (b.lines.length === 1 && !b.family) b.size = fitSize(g, b.lines[0], b.weight, b.size, null, maxW);
@@ -415,7 +427,7 @@
     g.restore();
     // ram med rundade hörn som en sarg
     g.save(); g.strokeStyle = "rgba(210,174,90,.55)"; g.lineWidth = 3;
-    roundRect(g, 28, 28, W - 56, H - 56, 46); g.stroke(); g.restore();
+    g.beginPath(); roundRect(g, 28, 28, W - 56, H - 56, 46); g.stroke(); g.restore();
 
     // siluett
     const base = H - (fmt === "story" ? 150 : 62), sc = fmt === "story" ? 1.5 : .8;
