@@ -175,7 +175,7 @@
     sel.disabled = false;
     sel.innerHTML = list.map((m) => {
       const d = new Date(m.start);
-      const label = `${d.getDate()}/${d.getMonth() + 1} ${hhmm(m.start)} · ${m.homeGame ? "vs" : "@"} ${m.opponent}${team ? "" : " · " + m.team}${m.usVariant ? " (" + m.usVariant + ")" : ""}`;
+      const label = `${d.getDate()}/${d.getMonth() + 1}${hhmm(m.start) ? " " + hhmm(m.start) : ""} · ${m.homeGame ? "vs" : "@"} ${m.opponent}${team ? "" : " · " + m.team}${m.usVariant ? " (" + m.usVariant + ")" : ""}`;
       return `<option value="${m.id}">${esc(label)}</option>`;
     }).join("");
     const next = list.find((m) => !isPast(m));
@@ -213,7 +213,7 @@
     const cv = $("poster"), W = 1080, H = fmt === "story" ? 1920 : 1080;
     await document.fonts.load('800 100px "Saira Extra Condensed"').catch(() => {});
     await document.fonts.load('600 40px "Barlow"').catch(() => {});
-    const m = current;
+    let m = current;
     const usLogo = await loadImg(data && data.ownLogo);
     const themLogo = m ? await loadImg((data.clubs[m.opponentClub] || {}).logo) : null;
     if (token !== drawToken) return;
@@ -239,6 +239,7 @@
     }
 
     const d = new Date(m.start);
+    if (!hhmm(m.start)) m = { ...m, meet: null }; // heldagsposter har ingen riktig samlingstid
     const top = fmt === "story" ? 260 : 150;
     // rubrik
     text(g, ($("title").value || "").toUpperCase(), W / 2, top, 800, fmt === "story" ? 150 : 112, C.white, "center", W - 120, true);
@@ -267,7 +268,7 @@
     const date = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
     if (fmt === "story") {
       text(g, date.toUpperCase(), W / 2, by + 110, 800, 88, C.navy, "center", W - 200);
-      text(g, `NEDSLAG ${hhmm(m.start)}`, W / 2, by + 210, 800, 96, C.blue, "center");
+      text(g, hhmm(m.start) ? `NEDSLAG ${hhmm(m.start)}` : "TID MEDDELAS SENARE", W / 2, by + 210, 800, hhmm(m.start) ? 96 : 64, C.blue, "center");
       text(g, m.location, W / 2, by + 290, 600, 44, C.navy, "center", W - 200, false, "Barlow");
       const sub = [m.series, m.meet && `Samling ${m.meet}`].filter(Boolean).join("  ·  ");
       text(g, sub, W / 2, by + 355, 500, 34, "#5A6B84", "center", W - 200, false, "Barlow");
@@ -275,8 +276,9 @@
       text(g, date.toUpperCase(), 110, by + 92, 800, 70, C.navy, "left", 560);
       text(g, m.location, 110, by + 150, 600, 38, C.navy, "left", 560, false, "Barlow");
       text(g, m.series || "", 110, by + 196, 500, 30, "#5A6B84", "left", 560, false, "Barlow");
-      text(g, hhmm(m.start), W - 110, by + 128, 800, 130, C.blue, "right");
-      text(g, m.meet ? `SAMLING ${m.meet}` : "NEDSLAG", W - 110, by + 190, 600, 34, "#5A6B84", "right");
+      if (hhmm(m.start)) text(g, hhmm(m.start), W - 110, by + 128, 800, 130, C.blue, "right");
+      else text(g, "TID MEDDELAS", W - 110, by + 118, 800, 56, C.blue, "right");
+      text(g, m.meet ? `SAMLING ${m.meet}` : (hhmm(m.start) ? "NEDSLAG" : "SENARE"), W - 110, by + 190, 600, 34, "#5A6B84", "right");
     }
     const extra = $("extra").value.trim();
     if (extra) text(g, extra, W / 2, fmt === "story" ? H - 110 : by - 30, 600, fmt === "story" ? 48 : 38, C.white, "center", W - 140, false, "Barlow");
@@ -335,7 +337,7 @@
     }
   }
 
-  function hhmm(iso) { return iso.length > 10 ? iso.slice(11, 16) : ""; }
+  function hhmm(iso) { const t = iso.length > 10 ? iso.slice(11, 16) : ""; return t === "00:00" ? "" : t; }
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 })();
 </script>
