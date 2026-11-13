@@ -124,8 +124,8 @@
       <details>
         <summary>Anpassa texter</summary>
         <div class="fields">
-          <label class="field">Rubrik <input type="text" id="title" placeholder="Matchdag / Poolspel"></label>
-          <label class="field">Extra rad <input type="text" id="extra" placeholder="t.ex. Fri entré – kom och heja!"></label>
+          <label class="field">Rubrik <input type="text" id="title" maxlength="24" placeholder="Matchdag / Poolspel"></label>
+          <label class="field">Extra rad <input type="text" id="extra" maxlength="90" placeholder="t.ex. Fri entré – kom och heja!"></label>
         </div>
       </details>
 
@@ -291,6 +291,7 @@
 
     const cv = $("poster"); cv.width = W; cv.height = H;
     const g = cv.getContext("2d");
+    window.__layout = { W, H, boxes: [] };
     background(g, W, H);
 
     if (!group || !opps.length) { text(g, "Välj en match", W / 2, H / 2, 900, 90, C.cream, "center"); return; }
@@ -308,67 +309,88 @@
     y += story ? 150 : 112;
     text(g, title, W / 2, y, 900, story ? 180 : 126, C.cream, "center", W - 120, true, null, 2);
 
-    // infoblockets överkant – allt i mitten fyller utrymmet ovanför
-    const infoTop = story ? H - 580 : H - 268;
+    // ---- infoblock: mäts först och staplas nerifrån, så att inget kan krocka
+    const date = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`.toUpperCase();
+    let when;
+    if (!times.length) when = "TID MEDDELAS SENARE";
+    else if (pool && times.length > 1) when = `NEDSLÄPP ${times[0]}–${times[times.length - 1]}`;
+    else when = `NEDSLÄPP ${times[0]}`;
+    const place = [first.location, first.series].filter(Boolean).join("  ·  ");
+    const extra = $("extra").value.trim();
+    const maxW = W - (story ? 170 : 150);
+    const info = [
+      { lines: [date], size: story ? 104 : 76, weight: 900, color: C.cream, shadow: true },
+      { lines: [when], size: story ? 62 : 46, weight: 800, color: C.gold },
+      place && { ...wrap(g, place, 500, story ? 36 : 28, "Barlow", maxW, 2, story ? 28 : 22), weight: 500, color: C.mist, family: "Barlow" },
+      extra && { ...wrap(g, extra, 700, story ? 48 : 32, "Barlow", maxW, 2, story ? 30 : 22), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: story ? 34 : 20 },
+    ].filter(Boolean);
+    for (const b of info) if (b.lines.length === 1 && !b.family) b.size = fitSize(g, b.lines[0], b.weight, b.size, null, maxW);
+    const lh = (b) => b.size * 1.18;
+    const ruleGap = story ? 40 : 30;
+    const infoH = ruleGap + info.reduce((h, b) => h + (b.gap || 0) + b.lines.length * lh(b), 0);
+    const bottomLimit = story ? H - 235 : H - 56;   // ovanför vattnet/ramen
+    const infoTop = bottomLimit - infoH;
 
     if (!pool) {
       const o = opps[0], img = imgs[0];
       const usLeft = first.homeGame !== false; // hemmalaget till vänster, som i en matchtablå
-      const L = story ? 250 : 236, cy = story ? 820 : 455, dx = story ? 280 : 262;
+      const nameSize = story ? 56 : 46, nameGap = nameSize + 14; // luft under skivan inkl. prickar på Å/Ä/Ö
+      const areaTop = y + (story ? 70 : 40), areaBot = infoTop - (story ? 50 : 26);
+      const L = Math.max(120, Math.min(story ? 250 : 236, (areaBot - areaTop - nameGap) / 1.42));
+      const groupH = L * 1.42 + nameGap;                  // från skivans överkant till namnets baslinje
+      const cy = areaTop + Math.max(0, (areaBot - areaTop - groupH) / 2) + L * .71;
+      const dx = story ? 280 : 262;
       const [lImg, lName, rImg, rName] = usLeft ? [own, OWN, img, o.club] : [img, o.club, own, OWN];
       crest(g, lImg, lName, W / 2 - dx, cy, L);
       crest(g, rImg, rName, W / 2 + dx, cy, L);
       text(g, "VS", W / 2, cy + (story ? 34 : 28), 900, story ? 104 : 84, C.gold, "center", null, true);
-      const ny = cy + L / 2 + (story ? 104 : 86);
-      text(g, lName.toUpperCase(), W / 2 - dx, ny, 800, story ? 56 : 46, C.cream, "center", story ? 440 : 420);
-      text(g, rName.toUpperCase(), W / 2 + dx, ny, 800, story ? 56 : 46, C.cream, "center", story ? 440 : 420);
+      const ny = cy + L * .71 + nameGap;
+      text(g, lName.toUpperCase(), W / 2 - dx, ny, 800, nameSize, C.cream, "center", story ? 440 : 420);
+      text(g, rName.toUpperCase(), W / 2 + dx, ny, 800, nameSize, C.cream, "center", story ? 440 : 420);
     } else {
       // poolspel: (story) vår logga överst, sedan "HC Wettern möter" och motståndarna i ett rutnät
       let my;
       if (story) {
-        const ownL = 170, oy = y + 190;
+        const ownL = opps.length > 4 ? 120 : 170, oy = y + 70 + ownL * .71 + 20;
         crest(g, own, OWN, W / 2, oy, ownL);
         my = oy + ownL / 2 + 112;
       } else {
         my = y + 74;
       }
-      rule(g, W / 2, my + (story ? 26 : 20), story ? 380 : 320);
+      rule(g, W / 2, my + (story ? 30 : 26), story ? 380 : 320);
       text(g, story ? "MÖTER" : "HC WETTERN MÖTER", W / 2, my, 800, story ? 48 : 36, C.gold, "center", null, false, null, 6);
 
-      const n = opps.length;
-      const cols = n <= 4 ? n : 3;
+      const n = opps.length, dense = n > 4;
+      const cols = n <= 4 ? n : n <= 6 ? 3 : n <= 8 ? 4 : 5;
       const rows = Math.ceil(n / cols);
       const top = my + (story ? 60 : 44), bottom = infoTop - (story ? 40 : 16);
       const cellW = (W - 120) / cols, cellH = (bottom - top) / rows;
-      const lab = story ? 120 : 92;
-      const L = Math.min(cellW * .56, (cellH - lab) / 1.4 * 1.0, story ? 220 : 170);
+      const nameSize = story ? (dense ? 32 : 40) : (dense ? 24 : 30);
+      const timeSize = story ? (dense ? 26 : 32) : (dense ? 21 : 26);
+      const anyTimes = opps.some((o) => o.times.length);
+      const lab = nameSize + 10 + (anyTimes ? timeSize * 1.4 : 0);
+      const L = Math.max(40, Math.min(cellW * .56, (cellH - lab) / 1.42, story ? 220 : 170));
       opps.forEach((o, i) => {
         const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols;
         const x = W / 2 + (c - (inRow - 1) / 2) * cellW;
-        const cy = top + r * cellH + (cellH - (L * 1.4 + lab)) / 2 + L * .7;
+        const cy = top + r * cellH + (cellH - (L * 1.42 + lab)) / 2 + L * .71;
         crest(g, imgs[i], o.club, x, cy, L);
-        text(g, o.club.toUpperCase(), x, cy + L * .7 + (story ? 56 : 40), 800, story ? 40 : 30, C.cream, "center", cellW - 24);
-        if (o.times.length) text(g, o.times.join("  ·  "), x, cy + L * .7 + (story ? 100 : 74), 600, story ? 32 : 26, C.gold, "center", cellW - 24, false, "Barlow");
+        const nyy = cy + L * .71 + nameSize + 10;
+        text(g, o.club.toUpperCase(), x, nyy, 800, nameSize, C.cream, "center", cellW - 20);
+        if (o.times.length) text(g, o.times.join("  ·  "), x, nyy + timeSize * 1.35, 600, timeSize, C.gold, "center", cellW - 20, false, "Barlow");
       });
     }
 
     // infoblock
-    let iy = infoTop;
-    rule(g, W / 2, iy, story ? 420 : 340);
-    const date = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`.toUpperCase();
-    iy += story ? 120 : 86;
-    text(g, date, W / 2, iy, 900, story ? 104 : 76, C.cream, "center", W - 140, true);
-    iy += story ? 88 : 62;
-    let when;
-    if (!times.length) when = "TID MEDDELAS SENARE";
-    else if (pool) when = times.length > 1 ? `NEDSLÄPP ${times[0]}–${times[times.length - 1]}` : `NEDSLÄPP ${times[0]}`;
-    else when = `NEDSLÄPP ${times[0]}`;
-    text(g, when, W / 2, iy, 800, story ? 62 : 46, C.gold, "center", W - 140);
-    iy += story ? 70 : 48;
-    const place = [first.location, first.series].filter(Boolean).join("  ·  ");
-    text(g, place, W / 2, iy, 500, story ? 36 : 28, C.mist, "center", W - 160, false, "Barlow");
-    const extra = $("extra").value.trim();
-    if (extra) text(g, extra, W / 2, story ? H - 300 : H - 26, 700, story ? 46 : 28, C.cream, "center", W - 140, true, "Barlow");
+    rule(g, W / 2, infoTop, story ? 420 : 340);
+    let iy = infoTop + ruleGap;
+    for (const b of info) {
+      iy += b.gap || 0;
+      for (const line of b.lines) {
+        iy += lh(b);
+        text(g, line, W / 2, iy - b.size * .18, b.weight, b.size, b.color, "center", maxW, b.shadow, b.family);
+      }
+    }
 
     prepareBlob();
     $("hint").textContent = `${W}×${H} px · ${pool ? `Poolspel, ${opps.length} motståndare` : homeGame === false ? "Bortamatch" : "Hemmamatch"}`;
@@ -449,6 +471,7 @@
 
   function crest(g, img, name, x, y, size) {
     const r = size / 2 + size * .16;
+    if (window.__layout) window.__layout.boxes.push({ s: "[logga " + name + "]", x0: x - r - size * .045, x1: x + r + size * .045, y0: y - r - size * .045, y1: y + r + size * .045, crest: true });
     g.save();
     g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = size * .22; g.shadowOffsetY = size * .05;
     const disc = g.createLinearGradient(0, y - r, 0, y + r);
@@ -464,6 +487,38 @@
       const initials = (name || "?").split(/[\s/]+/).filter((w) => w && w[0] === w[0].toUpperCase()).map((w) => w[0]).join("").slice(0, 3) || "?";
       text(g, initials, x, y + size * .15, 900, size * .44, C.deep, "center");
     }
+  }
+
+  function fontOf(weight, size, family) {
+    return `${weight} ${size}px ${family === "Barlow" ? '"Barlow", sans-serif' : '"Saira Extra Condensed", "Arial Narrow", sans-serif'}`;
+  }
+  // största storlek (<= size) där texten ryms på en rad
+  function fitSize(g, s, weight, size, family, maxW) {
+    g.save(); let sz = size;
+    for (; sz > 14; sz -= 2) { g.font = fontOf(weight, sz, family); if (g.measureText(s).width <= maxW) break; }
+    g.restore(); return sz;
+  }
+  // radbryt till högst maxLines rader; krymp typsnittet tills allt får plats
+  function wrap(g, s, weight, size, family, maxW, maxLines, minSize) {
+    g.save();
+    let best = null;
+    for (let sz = size; sz >= minSize; sz -= 2) {
+      g.font = fontOf(weight, sz, family);
+      const lines = []; let cur = "";
+      for (const w of s.split(/\s+/)) {
+        const t = cur ? cur + " " + w : w;
+        if (g.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+      }
+      if (cur) lines.push(cur);
+      best = { lines, size: sz };
+      if (lines.length <= maxLines && lines.every((l) => g.measureText(l).width <= maxW)) break;
+    }
+    g.restore();
+    if (best.lines.length > maxLines) {   // fortfarande för långt: korta sista raden
+      best.lines = best.lines.slice(0, maxLines);
+      best.lines[maxLines - 1] = best.lines[maxLines - 1].replace(/\s*\S*$/, "") + "…";
+    }
+    return best;
   }
 
   function rule(g, x, y, w) {
@@ -483,6 +538,9 @@
     if (shadow) { g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = 22; g.shadowOffsetY = 5; }
     // letter-spacing lägger till luft efter sista tecknet – kompensera vid centrering
     const dx = spacing && align === "center" && "letterSpacing" in g ? spacing / 2 : 0;
+    const m = g.measureText(s), w = m.width;
+    const x0 = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+    if (window.__layout && !g.__bg) window.__layout.boxes.push({ s, x0, x1: x0 + w, y0: y - m.actualBoundingBoxAscent, y1: y + m.actualBoundingBoxDescent });
     g.fillText(s, x + dx, y); g.restore();
   }
 
