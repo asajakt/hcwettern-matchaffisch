@@ -6,7 +6,8 @@
 2. Välj **Match / matchdag** i listan under. Har laget flera matcher samma dag visas de som ett **poolspel**, och då hamnar alla motståndare på samma affisch.
 3. Under **Motståndare** kan du ta bort lag med × eller lägga till fler med *+ Lägg till*. Lagfärger som Blå och Grå visas inte, bara klubbnamnet.
 4. Välj format: **Story 9:16** (förvalt) eller **Inlägg 1:1**.
-5. Tryck på **Ladda ner** för att spara bilden, eller **Dela** för att skicka den direkt från mobilen.
+5. **Spara bild** (på telefon) öppnar delningsmenyn. Där väljer du *Spara bild* eller delar direkt till Instagram. På dator heter knappen **Ladda ner** och sparar en PNG-fil. **Dela länk** skickar en länk till just den matchen.
+   Öppnas sidan inne i Instagram eller Facebook visas bilden stort, och då håller du fingret på den och väljer *Spara bild*.
 
 Direktlänk till en viss match: `https://asajakt.github.io/hcwettern-matchaffisch/?match=<match-id>`. Länken kopieras när du trycker på **Dela** på en dator.
 

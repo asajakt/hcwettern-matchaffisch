@@ -70,6 +70,11 @@
   .stage { display: grid; justify-items: center; gap: 10px; position: sticky; top: 16px; }
   canvas { width: 100%; max-width: 560px; height: auto; border-radius: 12px; box-shadow: 0 14px 34px rgba(11, 29, 58, .25); background: #0B1D3A; }
   .stage.story canvas { max-width: 380px; }
+  .save-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(4, 10, 24, .92); display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 16px; color: #F4ECDA; text-align: center; }
+  .save-overlay[hidden] { display: none; }
+  .save-overlay p { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .save-overlay img { width: 100%; height: 100%; object-fit: contain; min-height: 0; -webkit-touch-callout: default; user-select: auto; }
+  .save-overlay button { justify-self: center; font: 700 1.1rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px 28px; border-radius: 10px; border: 1px solid rgba(244,236,218,.4); background: transparent; color: inherit; cursor: pointer; }
   .hint { color: var(--muted); font-size: .85rem; text-align: center; margin: 0; }
 
   @media (max-width: 760px) {
@@ -126,7 +131,7 @@
 
       <div class="actions">
         <button class="btn" type="button" id="download">Ladda ner</button>
-        <button class="btn ghost" type="button" id="share">Dela</button>
+        <button class="btn ghost" type="button" id="share">Dela länk</button>
       </div>
     </form>
 
@@ -135,6 +140,12 @@
       <p class="hint" id="hint"></p>
     </div>
   </div>
+</div>
+
+<div class="save-overlay" id="saveOverlay" hidden role="dialog" aria-modal="true" aria-label="Spara bilden">
+  <p id="saveText">Håll fingret på bilden och välj <b>Spara i Bilder</b> (iPhone) eller <b>Ladda ner bild</b> (Android).</p>
+  <img id="saveImg" alt="Matchaffischen">
+  <button type="button" id="saveClose">Stäng</button>
 </div>
 
 <script>
@@ -148,6 +159,9 @@
   const DAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
   const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
   const OWN = "HC Wettern";
+  const UA = navigator.userAgent || "";
+  const MOBILE = /iPhone|iPad|iPod|Android/i.test(UA) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(UA));
+  const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|Messenger|Snapchat|TikTok|Line\//i.test(UA);
 
   let data = null, fmt = "story", imgCache = new Map();
   let groups = [], group = null, opps = []; // opps: [{club, times:[], on:true}]
@@ -192,7 +206,9 @@
     ["title", "extra"].forEach((id) => $(id).addEventListener("input", draw));
     document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => setFormat(b.dataset.fmt)));
     $("addBtn").addEventListener("click", addClub);
+    if (MOBILE) $("download").textContent = "Spara bild";
     $("download").addEventListener("click", download);
+    $("saveClose").addEventListener("click", () => { $("saveOverlay").hidden = true; });
     $("share").addEventListener("click", share);
   }
 
@@ -354,6 +370,7 @@
     const extra = $("extra").value.trim();
     if (extra) text(g, extra, W / 2, story ? H - 300 : H - 26, 700, story ? 46 : 28, C.cream, "center", W - 140, true, "Barlow");
 
+    prepareBlob();
     $("hint").textContent = `${W}×${H} px · ${pool ? `Poolspel, ${opps.length} motståndare` : homeGame === false ? "Bortamatch" : "Hemmamatch"}`;
   }
 
@@ -481,22 +498,50 @@
     const who = opps.length > 1 ? "poolspel" : slug(opps[0] ? opps[0].club : "match");
     return `hcwettern-${slug(group.team)}-${group.date}-${who}-${fmt}.png`;
   }
-  function blob() { return new Promise((r) => $("poster").toBlob(r, "image/png")); }
-  async function download() {
-    const b = await blob(); const a = document.createElement("a");
-    a.href = URL.createObjectURL(b); a.download = fileName(); a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  // Bilden görs i förväg efter varje ritning: iPhone kräver att delningsmenyn öppnas direkt i klicket.
+  let readyBlob = null;
+  function prepareBlob() {
+    readyBlob = null;
+    const t = drawToken;
+    $("poster").toBlob((b) => { if (t === drawToken) readyBlob = b; }, "image/png");
   }
-  async function share() {
-    const b = await blob(); const file = new File([b], fileName(), { type: "image/png" });
+  function blob() { return readyBlob ? Promise.resolve(readyBlob) : new Promise((r) => $("poster").toBlob(r, "image/png")); }
+
+  function download() {
+    if (!MOBILE) {
+      blob().then((b) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(b); a.download = fileName(); document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      });
+      return;
+    }
+    // Telefon: öppna delningsmenyn med bilden (där finns "Spara bild" och Instagram).
+    const file = readyBlob && new File([readyBlob], fileName(), { type: "image/png" });
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch((e) => { if (e && e.name !== "AbortError") showSave(); });
+    } else {
+      showSave(); // t.ex. inne i Instagram/Facebooks webbläsare – spara genom att hålla på bilden
+    }
+  }
+  function showSave() {
+    $("saveImg").src = $("poster").toDataURL("image/png");
+    $("saveText").innerHTML = IN_APP
+      ? "Håll fingret på bilden och välj <b>Spara bild</b>.<br><small>Går det inte: välj <b>Öppna i webbläsaren</b> i menyn uppe till höger.</small>"
+      : "Håll fingret på bilden och välj <b>Spara i Bilder</b> (iPhone) eller <b>Ladda ner bild</b> (Android).";
+    $("saveOverlay").hidden = false;
+  }
+
+  function shareUrl() {
     const url = new URL(location.href); url.search = "";
     if (group) url.searchParams.set("match", group.matches[0].id);
     if (fmt === "square") url.searchParams.set("format", "square");
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "HC Wettern" }); } catch {}
-    } else {
-      try { await navigator.clipboard.writeText(url.toString()); $("hint").textContent = "Länk till affischen kopierad."; } catch { prompt("Kopiera länken:", url.toString()); }
-    }
+    return url.toString();
+  }
+  function share() {
+    const url = shareUrl();
+    if (MOBILE && navigator.share) { navigator.share({ url, title: "HC Wettern matchaffisch" }).catch(() => {}); return; }
+    navigator.clipboard.writeText(url).then(() => { $("hint").textContent = "Länk till affischen kopierad."; }, () => prompt("Kopiera länken:", url));
   }
 
   function hhmm(iso) { const t = iso && iso.length > 10 ? iso.slice(11, 16) : ""; return t === "00:00" ? "" : t; }
