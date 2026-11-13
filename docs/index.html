@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HC Wettern Matchaffisch</title>
+<meta name="description" content="Skapa matchaffischer för HC Wetterns matcher – välj lag och match, ladda ner bilden.">
+<link rel="icon" href="logos/hc-wettern.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@600;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #EEF3F8; --panel: #FFFFFF; --ink: #0F2340; --muted: #5A6B84; --line: #D3DDE8;
+    --accent: #1E5BB8; --accent-ink: #FFFFFF; --focus: #1E5BB8;
+    --display: "Saira Extra Condensed", "Arial Narrow", sans-serif;
+    --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0A1322; --panel: #111D33; --ink: #E7EEF8; --muted: #93A3BC; --line: #22324E;
+      --accent: #2F6FD6; --focus: #7FAEFF; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A1322; --panel: #111D33; --ink: #E7EEF8; --muted: #93A3BC; --line: #22324E;
+    --accent: #2F6FD6; --focus: #7FAEFF; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; display: grid; gap: 24px; }
+  header { display: flex; align-items: center; gap: 14px; }
+  header img { width: 52px; height: 52px; object-fit: contain; }
+  h1 { margin: 0; font: 800 clamp(2rem, 6vw, 2.8rem)/0.95 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+  h1 span { color: var(--accent); }
+  .sync { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
+
+  .layout { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 24px; align-items: start; }
+  .layout > * { min-width: 0; }
+  select { max-width: 100%; text-overflow: ellipsis; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
+  label { display: grid; gap: 6px; font-size: .78rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  select, input[type=text] {
+    width: 100%; font: 500 1rem var(--body); color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-transform: none; letter-spacing: 0;
+  }
+  select:focus-visible, input:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg button { font: 600 .95rem var(--body); padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+  .seg button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { font: 700 1.15rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  details { font-size: .9rem; }
+  details summary { cursor: pointer; font-weight: 600; }
+  details .fields { display: grid; gap: 12px; margin-top: 12px; }
+
+  .stage { display: grid; justify-items: center; gap: 10px; }
+  canvas { width: 100%; max-width: 560px; height: auto; border-radius: 12px; box-shadow: 0 10px 30px rgba(15, 35, 64, .18); background: #13284A; }
+  .stage.story canvas { max-width: 380px; }
+  .hint { color: var(--muted); font-size: .85rem; text-align: center; margin: 0; }
+  .empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    .stage { order: -1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logos/hc-wettern.png" alt="">
+    <div>
+      <h1>HC Wettern <span>Matchaffisch</span></h1>
+      <p class="sync" id="sync">Laddar matcher…</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <form class="panel" id="form" onsubmit="return false">
+      <label>Lag
+        <select id="team"></select>
+      </label>
+      <label>Match
+        <select id="match"></select>
+      </label>
+      <label class="check"><input type="checkbox" id="past"> Visa även spelade matcher</label>
+
+      <div>
+        <label style="margin-bottom:6px">Format</label>
+        <div class="seg" role="group" aria-label="Format">
+          <button type="button" data-fmt="square" aria-pressed="true">Inlägg 1:1</button>
+          <button type="button" data-fmt="story" aria-pressed="false">Story 9:16</button>
+        </div>
+      </div>
+
+      <details>
+        <summary>Anpassa texter</summary>
+        <div class="fields">
+          <label>Rubrik <input type="text" id="title" value="Matchdag"></label>
+          <label>Extra rad <input type="text" id="extra" placeholder="t.ex. Fri entré – kom och heja!"></label>
+          <label>Vårt lagnamn <input type="text" id="usName"></label>
+          <label>Motståndare <input type="text" id="themName"></label>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn" type="button" id="download">Ladda ner</button>
+        <button class="btn ghost" type="button" id="share">Dela</button>
+      </div>
+    </form>
+
+    <div class="stage" id="stage">
+      <canvas id="poster" width="1080" height="1080" aria-label="Förhandsvisning av matchaffischen" role="img"></canvas>
+      <p class="hint" id="hint"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const C = { navy: "#0E2142", navy2: "#1A3165", blue: "#2F6FD6", ice: "#EAF2FB", white: "#FFFFFF", red: "#C8102E", muted: "#9FB4D6" };
+  const DAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
+  const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
+
+  let data = null, fmt = "square", imgCache = new Map();
+  const params = new URLSearchParams(location.search);
+
+  // ---------- data
+  fetch("data/matches.json", { cache: "no-cache" })
+    .then((r) => r.json())
+    .then((d) => { data = d; init(); })
+    .catch(() => { $("sync").textContent = "Kunde inte ladda matcherna. Försök igen senare."; });
+
+  function init() {
+    const upd = new Date(data.updated);
+    $("sync").textContent = `${data.matches.length} matcher · synkad från svenskalag ${upd.toLocaleDateString("sv-SE")} kl ${upd.toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}`;
+    const teams = [...new Set(data.matches.map((m) => m.team))].sort((a, b) => a.localeCompare(b, "sv"));
+    $("team").innerHTML = `<option value="">Alla lag</option>` + teams.map((t) => `<option>${esc(t)}</option>`).join("");
+
+    // Delad länk ?match=ID
+    const wanted = params.get("match");
+    const wm = wanted && data.matches.find((m) => m.id === wanted);
+    if (wm) { $("team").value = wm.team; if (isPast(wm)) $("past").checked = true; }
+    else {
+      try { const t = localStorage.getItem("hcw-team"); if (t && teams.includes(t)) $("team").value = t; } catch {}
+    }
+    if (params.get("format") === "story") setFormat("story");
+    fillMatches(wm ? wm.id : null);
+
+    $("team").addEventListener("change", () => { try { localStorage.setItem("hcw-team", $("team").value); } catch {} fillMatches(); });
+    $("past").addEventListener("change", () => fillMatches($("match").value));
+    $("match").addEventListener("change", () => { resetNames(); draw(); });
+    ["title", "extra", "usName", "themName"].forEach((id) => $(id).addEventListener("input", draw));
+    document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => setFormat(b.dataset.fmt)));
+    $("download").addEventListener("click", download);
+    $("share").addEventListener("click", share);
+  }
+
+  function isPast(m) { return new Date(m.end || m.start) < new Date(Date.now() - 3 * 3600e3); }
+
+  function fillMatches(keep) {
+    const team = $("team").value, showPast = $("past").checked;
+    let list = data.matches.filter((m) => (!team || m.team === team) && (showPast || !isPast(m)));
+    const sel = $("match");
+    if (!list.length) {
+      sel.innerHTML = `<option value="">Inga kommande matcher</option>`;
+      sel.disabled = true; current = null; draw(); return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = list.map((m) => {
+      const d = new Date(m.start);
+      const label = `${d.getDate()}/${d.getMonth() + 1} ${hhmm(m.start)} · ${m.homeGame ? "vs" : "@"} ${m.opponent}${team ? "" : " · " + m.team}${m.usVariant ? " (" + m.usVariant + ")" : ""}`;
+      return `<option value="${m.id}">${esc(label)}</option>`;
+    }).join("");
+    const next = list.find((m) => !isPast(m));
+    sel.value = keep && list.some((m) => m.id === keep) ? keep : (next || list[0]).id;
+    resetNames(); draw();
+  }
+
+  let current = null;
+  function resetNames() {
+    current = data.matches.find((m) => m.id === $("match").value) || null;
+    $("usName").value = current ? current.us : "";
+    $("themName").value = current ? current.opponent : "";
+  }
+
+  function setFormat(f) {
+    fmt = f;
+    document.querySelectorAll("[data-fmt]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fmt === f)));
+    $("stage").classList.toggle("story", f === "story");
+    draw();
+  }
+
+  // ---------- bilder
+  function loadImg(src) {
+    if (!src) return Promise.resolve(null);
+    if (!imgCache.has(src)) {
+      imgCache.set(src, new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }));
+    }
+    return imgCache.get(src);
+  }
+
+  // ---------- rita
+  let drawToken = 0;
+  async function draw() {
+    const token = ++drawToken;
+    const cv = $("poster"), W = 1080, H = fmt === "story" ? 1920 : 1080;
+    await document.fonts.load('800 100px "Saira Extra Condensed"').catch(() => {});
+    await document.fonts.load('600 40px "Barlow"').catch(() => {});
+    const m = current;
+    const usLogo = await loadImg(data && data.ownLogo);
+    const themLogo = m ? await loadImg((data.clubs[m.opponentClub] || {}).logo) : null;
+    if (token !== drawToken) return;
+    cv.width = W; cv.height = H;
+    const g = cv.getContext("2d");
+
+    // bakgrund: isyta i blått med diagonala ljusstrålar
+    const bg = g.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, C.navy2); bg.addColorStop(1, C.navy);
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.save(); g.globalAlpha = .07; g.fillStyle = C.white;
+    for (let i = -2; i < 6; i++) { g.beginPath(); const x = i * 260; g.moveTo(x, 0); g.lineTo(x + 120, 0); g.lineTo(x + 120 - H * .45, H); g.lineTo(x - H * .45, H); g.fill(); }
+    g.restore();
+    // mittcirkel och röd mittlinje
+    const cy = fmt === "story" ? H * .41 : 470;
+    g.save(); g.strokeStyle = "rgba(255,255,255,.10)"; g.lineWidth = 6;
+    g.beginPath(); g.arc(W / 2, cy, 250, 0, Math.PI * 2); g.stroke(); g.restore();
+    g.fillStyle = C.red; g.globalAlpha = .9; g.fillRect(W / 2 - 4, 0, 8, H); g.globalAlpha = 1;
+
+    if (!m) {
+      text(g, "Ingen match vald", W / 2, H / 2, 800, 80, C.white, "center");
+      return;
+    }
+
+    const d = new Date(m.start);
+    const top = fmt === "story" ? 260 : 150;
+    // rubrik
+    text(g, ($("title").value || "").toUpperCase(), W / 2, top, 800, fmt === "story" ? 150 : 112, C.white, "center", W - 120, true);
+    text(g, m.team.toUpperCase(), W / 2, top + (fmt === "story" ? 80 : 58), 600, 40, C.muted, "center", W - 160);
+
+    // loggor – vår logga till vänster om vi är hemmalag, annars höger
+    const L = fmt === "story" ? 300 : 250;
+    const xl = W * (fmt === "story" ? .255 : .25), xr = W - xl;
+    const left = m.homeGame ? [usLogo, $("usName").value] : [themLogo, $("themName").value];
+    const right = m.homeGame ? [themLogo, $("themName").value] : [usLogo, $("usName").value];
+    logo(g, left[0], left[1], xl, cy, L);
+    logo(g, right[0], right[1], xr, cy, L);
+    // VS-bricka
+    g.save(); g.fillStyle = C.white; g.beginPath(); g.arc(W / 2, cy, 62, 0, Math.PI * 2); g.fill(); g.restore();
+    text(g, "VS", W / 2, cy + 26, 800, 74, C.navy, "center");
+
+    // lagnamn
+    const ny = cy + L / 2 + 92;
+    text(g, left[1].toUpperCase(), xl, ny, 800, 52, C.white, "center", W * .44);
+    text(g, right[1].toUpperCase(), xr, ny, 800, 52, C.white, "center", W * .44);
+
+    // infoband
+    const by = fmt === "story" ? H - 700 : H - 280;
+    const bh = fmt === "story" ? 460 : 220;
+    g.fillStyle = "rgba(255,255,255,.96)"; roundRect(g, 60, by, W - 120, bh, 28); g.fill();
+    const date = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    if (fmt === "story") {
+      text(g, date.toUpperCase(), W / 2, by + 110, 800, 88, C.navy, "center", W - 200);
+      text(g, `NEDSLAG ${hhmm(m.start)}`, W / 2, by + 210, 800, 96, C.blue, "center");
+      text(g, m.location, W / 2, by + 290, 600, 44, C.navy, "center", W - 200, false, "Barlow");
+      const sub = [m.series, m.meet && `Samling ${m.meet}`].filter(Boolean).join("  ·  ");
+      text(g, sub, W / 2, by + 355, 500, 34, "#5A6B84", "center", W - 200, false, "Barlow");
+    } else {
+      text(g, date.toUpperCase(), 110, by + 92, 800, 70, C.navy, "left", 560);
+      text(g, m.location, 110, by + 150, 600, 38, C.navy, "left", 560, false, "Barlow");
+      text(g, m.series || "", 110, by + 196, 500, 30, "#5A6B84", "left", 560, false, "Barlow");
+      text(g, hhmm(m.start), W - 110, by + 128, 800, 130, C.blue, "right");
+      text(g, m.meet ? `SAMLING ${m.meet}` : "NEDSLAG", W - 110, by + 190, 600, 34, "#5A6B84", "right");
+    }
+    const extra = $("extra").value.trim();
+    if (extra) text(g, extra, W / 2, fmt === "story" ? H - 110 : by - 30, 600, fmt === "story" ? 48 : 38, C.white, "center", W - 140, false, "Barlow");
+
+    $("hint").textContent = `${W}×${H} px · ${m.homeGame ? "Hemmamatch" : "Bortamatch"}`;
+  }
+
+  function logo(g, img, name, x, y, size) {
+    // vit rund platta bakom loggan så att alla märken syns mot den mörka bakgrunden
+    g.save(); g.fillStyle = "rgba(255,255,255,.95)"; g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 40;
+    g.beginPath(); g.arc(x, y, size / 2 + 34, 0, Math.PI * 2); g.fill(); g.restore();
+    if (img) {
+      const s = Math.min(size / img.width, size / img.height);
+      g.drawImage(img, x - img.width * s / 2, y - img.height * s / 2, img.width * s, img.height * s);
+    } else {
+      const initials = (name || "?").split(/[\s/]+/).filter((w) => w && w[0] === w[0].toUpperCase()).map((w) => w[0]).join("").slice(0, 3) || "?";
+      text(g, initials, x, y + size * .14, 800, size * .42, C.navy, "center");
+    }
+  }
+
+  function text(g, s, x, y, weight, size, color, align, maxW, shadow, family) {
+    if (!s) return;
+    const fam = family === "Barlow" ? '"Barlow", sans-serif' : '"Saira Extra Condensed", "Arial Narrow", sans-serif';
+    g.save();
+    g.font = `${weight} ${size}px ${fam}`;
+    if (maxW) { let sz = size; while (g.measureText(s).width > maxW && sz > 14) { sz -= 2; g.font = `${weight} ${sz}px ${fam}`; } }
+    g.fillStyle = color; g.textAlign = align; g.textBaseline = "alphabetic";
+    if (shadow) { g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 24; g.shadowOffsetY = 6; }
+    g.fillText(s, x, y); g.restore();
+  }
+
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+
+  // ---------- export
+  function fileName() {
+    if (!current) return "matchaffisch.png";
+    const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return `hcwettern-${current.start.slice(0, 10)}-${slug(current.opponent)}-${fmt}.png`;
+  }
+  function blob() { return new Promise((r) => $("poster").toBlob(r, "image/png")); }
+  async function download() {
+    const b = await blob(); const a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = fileName(); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+  async function share() {
+    const b = await blob(); const file = new File([b], fileName(), { type: "image/png" });
+    const url = new URL(location.href); url.search = ""; if (current) url.searchParams.set("match", current.id); if (fmt === "story") url.searchParams.set("format", "story");
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "Matchdag – HC Wettern" }); } catch {}
+    } else {
+      try { await navigator.clipboard.writeText(url.toString()); $("hint").textContent = "Länk till affischen kopierad."; } catch { prompt("Kopiera länken:", url.toString()); }
+    }
+  }
+
+  function hhmm(iso) { return iso.length > 10 ? iso.slice(11, 16) : ""; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+})();
+</script>
+</body>
+</html>

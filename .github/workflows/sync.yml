@@ -1,0 +1,37 @@
+name: Synka matcher
+
+on:
+  schedule:
+    - cron: "15 3 * * *"   # varje natt 03:15 UTC (04:15/05:15 svensk tid)
+  workflow_dispatch: {}      # kör manuellt via Actions-fliken
+  push:
+    paths: ["scripts/**"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - run: python scripts/sync.py
+      - name: Commit om något ändrats
+        run: |
+          git add docs
+          if git diff --cached --quiet; then
+            echo "Inga ändringar"
+          else
+            git config user.name "matchaffisch-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Synk av matcher $(date -u +%F)"
+            git push
+          fi
