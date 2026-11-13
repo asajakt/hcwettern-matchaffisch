@@ -23,6 +23,7 @@ ALIASES = ROOT / "scripts" / "aliases.json"
 
 ICS_URL = "https://cal.svenskalag.se/10862"
 OWN_CLUB = "HC Wettern"
+HOME_ARENA = "vadstena"  # matcher i Vadstena Ishall räknas som hemmamatcher
 DISTRICTS = [
     "Ostergotland", "Smaland", "Vastergotland", "Orebro", "Sodermanland",
     "Stockholm", "Uppland", "Vastmanland", "Varmland", "Skane", "Blekinge",
@@ -127,18 +128,24 @@ def parse_match(summary: str, ev: dict) -> dict | None:
     meet = re.search(r"Samling:\s*kl\s*([\d:.]+)", desc)
     uid = re.search(r"cal(\d+)", ev.get("UID", ""))
 
+    location = unescape_ics(ev.get("LOCATION", "")).strip()
+    # För publiken är det arenan som avgör hemma/borta – i poolspel står HC Wettern ofta
+    # som "hemmalag" fast matchen spelas i en annan stad. Utan arena används kalenderns upplägg.
+    home_game = HOME_ARENA in norm(location) if location else home_is_us
+
     return {
         "id": uid.group(1) if uid else ev.get("UID", ""),
         "start": ics_time(ev.get("DTSTART", "")),
         "end": ics_time(ev.get("DTEND", "")) if ev.get("DTEND") else None,
         "meet": meet.group(1).replace(".", ":") if meet else None,
-        "location": unescape_ics(ev.get("LOCATION", "")).strip(),
+        "location": location,
         "series": series,
         "team": group or "HC Wettern",
         "teamSlug": team_url.group(1) if team_url else None,
         "home": home,
         "away": away,
-        "homeGame": home_is_us,
+        "homeGame": home_game,
+        "listedHome": home_is_us,
         "us": us,
         "opponent": them,
     }

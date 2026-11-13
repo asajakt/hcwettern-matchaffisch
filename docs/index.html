@@ -111,8 +111,8 @@
       <div>
         <div class="lbl" style="margin-bottom:6px">Format</div>
         <div class="seg" role="group" aria-label="Format">
-          <button type="button" data-fmt="square" aria-pressed="true">Inlägg 1:1</button>
-          <button type="button" data-fmt="story" aria-pressed="false">Story 9:16</button>
+          <button type="button" data-fmt="story" aria-pressed="true">Story 9:16</button>
+          <button type="button" data-fmt="square" aria-pressed="false">Inlägg 1:1</button>
         </div>
       </div>
 
@@ -130,8 +130,8 @@
       </div>
     </form>
 
-    <div class="stage" id="stage">
-      <canvas id="poster" width="1080" height="1080" aria-label="Förhandsvisning av matchaffischen" role="img"></canvas>
+    <div class="stage story" id="stage">
+      <canvas id="poster" width="1080" height="1920" aria-label="Förhandsvisning av matchaffischen" role="img"></canvas>
       <p class="hint" id="hint"></p>
     </div>
   </div>
@@ -149,7 +149,7 @@
   const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
   const OWN = "HC Wettern";
 
-  let data = null, fmt = "square", imgCache = new Map();
+  let data = null, fmt = "story", imgCache = new Map();
   let groups = [], group = null, opps = []; // opps: [{club, times:[], on:true}]
   const params = new URLSearchParams(location.search);
 
@@ -183,7 +183,7 @@
     const wg = wanted && groups.find((g) => g.matches.some((m) => m.id === wanted));
     if (wg) { $("team").value = wg.team; if (isPast(wg)) $("past").checked = true; }
     else { try { const t = localStorage.getItem("hcw-team"); if (t && teams.includes(t)) $("team").value = t; } catch {} }
-    if (params.get("format") === "story") setFormat("story");
+    if (params.get("format") === "square") setFormat("square");
     fillGroups(wg ? wg.key : null);
 
     $("team").addEventListener("change", () => { try { localStorage.setItem("hcw-team", $("team").value); } catch {} fillGroups(); });
@@ -297,7 +297,7 @@
 
     if (!pool) {
       const o = opps[0], img = imgs[0];
-      const usLeft = first.homeGame !== false;
+      const usLeft = first.homeGame !== false; // hemmalaget till vänster, som i en matchtablå
       const L = story ? 250 : 236, cy = story ? 820 : 455, dx = story ? 280 : 262;
       const [lImg, lName, rImg, rName] = usLeft ? [own, OWN, img, o.club] : [img, o.club, own, OWN];
       crest(g, lImg, lName, W / 2 - dx, cy, L);
@@ -345,8 +345,8 @@
     iy += story ? 88 : 62;
     let when;
     if (!times.length) when = "TID MEDDELAS SENARE";
-    else if (pool) when = times.length > 1 ? `NEDSLAG ${times[0]}–${times[times.length - 1]}` : `NEDSLAG ${times[0]}`;
-    else when = `NEDSLAG ${times[0]}`;
+    else if (pool) when = times.length > 1 ? `NEDSLÄPP ${times[0]}–${times[times.length - 1]}` : `NEDSLÄPP ${times[0]}`;
+    else when = `NEDSLÄPP ${times[0]}`;
     text(g, when, W / 2, iy, 800, story ? 62 : 46, C.gold, "center", W - 140);
     iy += story ? 70 : 48;
     const place = [first.location, first.series].filter(Boolean).join("  ·  ");
@@ -491,7 +491,7 @@
     const b = await blob(); const file = new File([b], fileName(), { type: "image/png" });
     const url = new URL(location.href); url.search = "";
     if (group) url.searchParams.set("match", group.matches[0].id);
-    if (fmt === "story") url.searchParams.set("format", "story");
+    if (fmt === "square") url.searchParams.set("format", "square");
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], title: "HC Wettern" }); } catch {}
     } else {

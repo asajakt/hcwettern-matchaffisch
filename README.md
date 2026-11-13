@@ -5,7 +5,7 @@
 1. Välj **Lag** i den översta listan (t.ex. A-laget eller U12 - Team 14/15).
 2. Välj **Match / matchdag** i listan under. Har laget flera matcher samma dag visas de som ett **poolspel**, och då hamnar alla motståndare på samma affisch.
 3. Under **Motståndare** kan du ta bort lag med × eller lägga till fler med *+ Lägg till*. Lagfärger som Blå och Grå visas inte, bara klubbnamnet.
-4. Välj format: **Inlägg 1:1** eller **Story 9:16**.
+4. Välj format: **Story 9:16** (förvalt) eller **Inlägg 1:1**.
 5. Tryck på **Ladda ner** för att spara bilden, eller **Dela** för att skicka den direkt från mobilen.
 
 Direktlänk till en viss match: `https://asajakt.github.io/hcwettern-matchaffisch/?match=<match-id>`. Länken kopieras när du trycker på **Dela** på en dator.
