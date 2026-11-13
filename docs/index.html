@@ -41,7 +41,7 @@
   .layout > * { min-width: 0; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
   .lbl, label.field { display: grid; gap: 6px; font-size: .78rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  select, input[type=text] {
+  select, input[type=text], textarea {
     width: 100%; max-width: 100%; font: 500 1rem var(--body); color: var(--ink); background: var(--bg);
     border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-overflow: ellipsis;
   }
@@ -64,6 +64,8 @@
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn { font: 700 1.15rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
   .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  textarea { resize: vertical; line-height: 1.35; min-height: 2.6em; font-family: var(--body); }
+  .field small { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
   details { font-size: .9rem; }
   details summary { cursor: pointer; font-weight: 600; }
   details .fields { display: grid; gap: 12px; margin-top: 12px; }
@@ -129,8 +131,10 @@
       <details>
         <summary>Anpassa texter</summary>
         <div class="fields">
-          <label class="field">Rubrik <input type="text" id="title" maxlength="24" placeholder="Matchdag / Poolspel"></label>
-          <label class="field">Extra rad <input type="text" id="extra" maxlength="90" placeholder="t.ex. Fri entré – kom och heja!"></label>
+          <label class="field">Rubrik <small>Enter = ny rad (max 2 rader)</small>
+            <textarea id="title" rows="1" maxlength="40" placeholder="Matchdag / Poolspel"></textarea></label>
+          <label class="field">Extra text <small>Enter = ny rad (max 4 rader)</small>
+            <textarea id="extra" rows="2" maxlength="160" placeholder="t.ex. Fri entré – kom och heja!"></textarea></label>
         </div>
       </details>
 
@@ -309,14 +313,22 @@
     const first = group.matches[0], d = new Date(first.start);
     const times = group.matches.map((m) => hhmm(m.start)).filter(Boolean).sort();
     const homeGame = group.matches.every((m) => m.homeGame) ? true : group.matches.every((m) => !m.homeGame) ? false : null;
-    const title = ($("title").value.trim() || (pool ? "Poolspel" : "Matchdag")).toUpperCase();
+    const titleLines = ($("title").value.trim() || (pool ? "Poolspel" : "Matchdag")).toUpperCase()
+      .split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 2);
 
     // överrubrik
     const kicker = [group.team.toUpperCase(), homeGame === true ? "HEMMA" : homeGame === false ? "BORTA" : null].filter(Boolean).join("   ·   ");
     let y = story ? 250 : 112;
     text(g, kicker, W / 2, y, 700, story ? 38 : 30, C.gold, "center", W - 160, false, "Barlow", 6);
-    y += story ? 150 : 112;
-    text(g, title, W / 2, y, 900, story ? 180 : 126, C.cream, "center", W - 120, true, null, 2);
+    // två rader: mindre grad, och raderna får samma storlek så att de ser ut som en rubrik
+    const tSize = titleLines.length > 1
+      ? Math.min(...titleLines.map((l) => fitSize(g, l, 900, story ? 140 : 92, null, W - 120)))
+      : (story ? 180 : 126);
+    y += titleLines.length > 1 ? (story ? 124 : 84) : (story ? 150 : 112);
+    titleLines.forEach((l, i) => {
+      if (i) y += tSize * .98;
+      text(g, l, W / 2, y, 900, tSize, C.cream, "center", W - 120, true, null, 2);
+    });
 
     // ---- infoblock: mäts först och staplas nerifrån, så att inget kan krocka
     const date = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`.toUpperCase();
@@ -334,7 +346,7 @@
       { lines: [when], size: story ? 62 : 46, weight: 800, color: C.gold },
       place && { ...wrap(g, place, 500, story ? 36 : 28, "Barlow", maxW, 2, story ? 28 : 22), weight: 500, color: C.mist, family: "Barlow" },
       entry && { lines: [entry], size: story ? 54 : 40, weight: 800, color: C.cream, gap: story ? 16 : 10 },
-      extra && { ...wrap(g, extra, 700, story ? 48 : 32, "Barlow", maxW, 2, story ? 30 : 22), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: story ? 34 : 20 },
+      extra && { ...wrap(g, extra, 700, story ? 48 : 32, "Barlow", maxW, Math.min(4, Math.max(2, extra.split("\n").length)), story ? 28 : 20), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: story ? 34 : 20 },
     ].filter(Boolean);
     for (const b of info) if (b.lines.length === 1 && !b.family) b.size = fitSize(g, b.lines[0], b.weight, b.size, null, maxW);
     const lh = (b) => b.size * 1.18;
@@ -516,12 +528,15 @@
     let best = null;
     for (let sz = size; sz >= minSize; sz -= 2) {
       g.font = fontOf(weight, sz, family);
-      const lines = []; let cur = "";
-      for (const w of s.split(/\s+/)) {
-        const t = cur ? cur + " " + w : w;
-        if (g.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+      const lines = [];
+      for (const para of s.split("\n").map((p) => p.trim()).filter(Boolean)) {
+        let cur = "";
+        for (const w of para.split(/[ \t]+/)) {
+          const t = cur ? cur + " " + w : w;
+          if (g.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+        }
+        if (cur) lines.push(cur);
       }
-      if (cur) lines.push(cur);
       best = { lines, size: sz };
       if (lines.length <= maxLines && lines.every((l) => g.measureText(l).width <= maxW)) break;
     }

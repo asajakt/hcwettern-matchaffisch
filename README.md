@@ -5,6 +5,7 @@
 1. Välj **Lag** i den översta listan (t.ex. A-laget eller U12 - Team 14/15).
 2. Välj **Match / matchdag** i listan under. Har laget flera matcher samma dag visas de som ett **poolspel**, och då hamnar alla motståndare på samma affisch.
 3. Under **Motståndare** kan du ta bort lag med × eller lägga till fler med *+ Lägg till*. Lagfärger som Blå och Grå visas inte, bara klubbnamnet.
+   Under **Anpassa texter** kan du ändra rubriken och lägga till egen text. Tryck **Enter** för ny rad: rubriken får högst 2 rader och den extra texten högst 4.
 4. Välj format: **Story 9:16** (förvalt) eller **Inlägg 1:1**.
 5. **Spara bild** (på telefon) öppnar delningsmenyn. Där väljer du *Spara bild* eller delar direkt till Instagram. På dator heter knappen **Ladda ner** och sparar en PNG-fil. **Dela länk** skickar en länk till just den matchen.
    Öppnas sidan inne i Instagram eller Facebook visas bilden stort, och då håller du fingret på den och väljer *Spara bild*.
