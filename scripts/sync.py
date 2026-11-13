@@ -28,6 +28,12 @@ DISTRICTS = [
     "Stockholm", "Uppland", "Vastmanland", "Varmland", "Skane", "Blekinge",
     "Goteborg", "BohuslanDals", "Halland", "Dalarna", "Gastrikland", "Gotland",
 ]
+# Kortnamn för lagen i listan och på affischen. Lag som inte står här får
+# "U11 - Team 16" -> "U11" (allt efter " - Team" tas bort).
+TEAM_LABELS = {
+    "U10 - Team 17": "U10P",
+    "TKH Äldre - Team 18/19 - U8/U9": "U9P",
+}
 UA = {"User-Agent": "Mozilla/5.0 (matchaffisch-sync)"}
 
 # Lagfärger/varianter som ska strippas för att hitta klubben (t.ex. "Linköping HC Gul").
@@ -115,6 +121,7 @@ def parse_match(summary: str, ev: dict) -> dict | None:
 
     # Lagnamn från " // U12 - Team 14/15 - HC Wettern"
     group = re.sub(r"\s*-\s*HC Wettern\s*$", "", group.strip())
+    group = TEAM_LABELS.get(group, re.sub(r"\s+-\s+Team\b.*$", "", group))
     desc = unescape_ics(ev.get("DESCRIPTION", ""))
     team_url = re.search(r"www\.svenskalag\.se/([\w-]+)", desc)
     meet = re.search(r"Samling:\s*kl\s*([\d:.]+)", desc)
