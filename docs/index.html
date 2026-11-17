@@ -399,7 +399,8 @@
       const timeSize = S((dense ? 26 : 32), (dense ? 21 : 26));
       const anyTimes = opps.some((o) => o.times.length);
       const lab = nameSize + 10 + (anyTimes ? timeSize * 1.4 : 0);
-      const L = Math.max(40, Math.min(cellW * .56, (cellH - lab) / 1.42, S(220, 170)));
+      const rowGap = rows > 1 ? S(44, 28) : 0; // luft mellan lagnamn och raden under
+      const L = Math.max(40, Math.min(cellW * .56, (cellH - lab - rowGap) / 1.42, S(220, 170)));
       opps.forEach((o, i) => {
         const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols;
         const x = W / 2 + (c - (inRow - 1) / 2) * cellW;
