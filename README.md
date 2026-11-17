@@ -6,7 +6,7 @@
 2. Välj **Match / matchdag** i listan under. Har laget flera matcher samma dag visas de som ett **poolspel**, och då hamnar alla motståndare på samma affisch.
 3. Under **Motståndare** kan du ta bort lag med × eller lägga till fler med *+ Lägg till*. Lagfärger som Blå och Grå visas inte, bara klubbnamnet.
    Under **Anpassa texter** kan du ändra rubriken och lägga till egen text. Tryck **Enter** för ny rad: rubriken får högst 2 rader och den extra texten högst 4.
-4. Välj format: **Story 9:16** (förvalt) eller **Inlägg 1:1**.
+4. Välj format: **Inlägg 4:5** (förvalt, 1080×1350 – fyller ett stående Instagram-/Facebookinlägg utan att beskäras), **Story 9:16** (1080×1920) eller **Kvadrat 1:1** (1080×1080).
 5. **Spara bild** (på telefon) öppnar delningsmenyn. Där väljer du *Spara bild* eller delar direkt till Instagram. På dator heter knappen **Ladda ner** och sparar en PNG-fil. **Dela länk** skickar en länk till just den matchen.
    Öppnas sidan inne i Instagram eller Facebook visas bilden stort, och då håller du fingret på den och väljer *Spara bild*.
 
@@ -14,7 +14,7 @@ Direktlänk till en viss match: `https://asajakt.github.io/hcwettern-matchaffisc
 
 ---
 
-Webbsida där vem som helst i föreningen väljer lag och match och laddar ner en färdig matchaffisch (1:1 för inlägg eller 9:16 för story) med båda klubbarnas loggor.
+Webbsida där vem som helst i föreningen väljer lag och match och laddar ner en färdig matchaffisch (4:5 för stående inlägg, 9:16 för story eller 1:1 kvadrat) med båda klubbarnas loggor.
 
 ## Hur det fungerar
 

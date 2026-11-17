@@ -47,7 +47,7 @@
   }
   select:focus-visible, input:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   .check { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 500; color: var(--ink); }
-  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .seg button { font: 600 .95rem var(--body); padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
   .seg button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
@@ -73,6 +73,7 @@
   .stage { display: grid; justify-items: center; gap: 10px; position: sticky; top: 16px; }
   canvas { width: 100%; max-width: 560px; height: auto; border-radius: 12px; box-shadow: 0 14px 34px rgba(11, 29, 58, .25); background: #0B1D3A; }
   .stage.story canvas { max-width: 380px; }
+  .stage.post canvas { max-width: 470px; }
   .save-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(4, 10, 24, .92); display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 16px; color: #F4ECDA; text-align: center; }
   .save-overlay[hidden] { display: none; }
   .save-overlay p { margin: 0; font-size: 1.05rem; font-weight: 600; }
@@ -123,8 +124,9 @@
       <div>
         <div class="lbl" style="margin-bottom:6px">Format</div>
         <div class="seg" role="group" aria-label="Format">
-          <button type="button" data-fmt="story" aria-pressed="true">Story 9:16</button>
-          <button type="button" data-fmt="square" aria-pressed="false">Inlägg 1:1</button>
+          <button type="button" data-fmt="post" aria-pressed="true">Inlägg 4:5</button>
+          <button type="button" data-fmt="story" aria-pressed="false">Story 9:16</button>
+          <button type="button" data-fmt="square" aria-pressed="false">Kvadrat 1:1</button>
         </div>
       </div>
 
@@ -144,8 +146,8 @@
       </div>
     </form>
 
-    <div class="stage story" id="stage">
-      <canvas id="poster" width="1080" height="1920" aria-label="Förhandsvisning av matchaffischen" role="img"></canvas>
+    <div class="stage post" id="stage">
+      <canvas id="poster" width="1080" height="1350" aria-label="Förhandsvisning av matchaffischen" role="img"></canvas>
       <p class="hint" id="hint"></p>
     </div>
   </div>
@@ -172,7 +174,8 @@
   const MOBILE = /iPhone|iPad|iPod|Android/i.test(UA) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(UA));
   const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|Messenger|Snapchat|TikTok|Line\//i.test(UA);
 
-  let data = null, fmt = "story", imgCache = new Map();
+  const FORMATS = { post: { h: 1350 }, story: { h: 1920 }, square: { h: 1080 } };
+  let data = null, fmt = "post", imgCache = new Map();
   let groups = [], group = null, opps = []; // opps: [{club, times:[], on:true}]
   const params = new URLSearchParams(location.search);
 
@@ -206,7 +209,7 @@
     const wg = wanted && groups.find((g) => g.matches.some((m) => m.id === wanted));
     if (wg) { $("team").value = wg.team; if (isPast(wg)) $("past").checked = true; }
     else { try { const t = localStorage.getItem("hcw-team"); if (t && teams.includes(t)) $("team").value = t; } catch {} }
-    if (params.get("format") === "square") setFormat("square");
+    if (FORMATS[params.get("format")]) setFormat(params.get("format"));
     fillGroups(wg ? wg.key : null);
 
     $("team").addEventListener("change", () => { try { localStorage.setItem("hcw-team", $("team").value); } catch {} fillGroups(); });
@@ -278,6 +281,7 @@
     fmt = f;
     document.querySelectorAll("[data-fmt]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fmt === f)));
     $("stage").classList.toggle("story", f === "story");
+    $("stage").classList.toggle("post", f === "post");
     draw();
   }
 
@@ -293,7 +297,9 @@
   let drawToken = 0;
   async function draw() {
     const token = ++drawToken;
-    const W = 1080, H = fmt === "story" ? 1920 : 1080, story = fmt === "story";
+    const W = 1080, H = FORMATS[fmt].h, story = fmt === "story";
+    // mått interpoleras mellan kvadrat (1080) och story (1920) – 4:5 hamnar däremellan
+    const t = (H - 1080) / 840, S = (a, b) => Math.round(b + (a - b) * t);
     await Promise.all([
       document.fonts.load('900 100px "Saira Extra Condensed"'), document.fonts.load('800 100px "Saira Extra Condensed"'),
       document.fonts.load('600 40px "Barlow"'), document.fonts.load('700 40px "Barlow"'),
@@ -318,13 +324,13 @@
 
     // överrubrik
     const kicker = [group.team.toUpperCase(), homeGame === true ? "HEMMA" : homeGame === false ? "BORTA" : null].filter(Boolean).join("   ·   ");
-    let y = story ? 250 : 112;
-    text(g, kicker, W / 2, y, 700, story ? 38 : 30, C.gold, "center", W - 160, false, "Barlow", 6);
+    let y = S(250, 112);
+    text(g, kicker, W / 2, y, 700, S(38, 30), C.gold, "center", W - 160, false, "Barlow", 6);
     // två rader: mindre grad, och raderna får samma storlek så att de ser ut som en rubrik
     const tSize = titleLines.length > 1
-      ? Math.min(...titleLines.map((l) => fitSize(g, l, 900, story ? 140 : 92, null, W - 120)))
-      : (story ? 180 : 126);
-    y += titleLines.length > 1 ? (story ? 124 : 84) : (story ? 150 : 112);
+      ? Math.min(...titleLines.map((l) => fitSize(g, l, 900, S(140, 92), null, W - 120)))
+      : (S(180, 126));
+    y += titleLines.length > 1 ? (S(124, 84)) : (S(150, 112));
     titleLines.forEach((l, i) => {
       if (i) y += tSize * .98;
       text(g, l, W / 2, y, 900, tSize, C.cream, "center", W - 120, true, null, 2);
@@ -340,37 +346,37 @@
     const extra = $("extra").value.trim();
     const price = $("price").value.trim();
     const entry = chargesEntry() && price ? `ENTRÉ ${price} KR` : "";
-    const maxW = W - (story ? 170 : 150);
+    const maxW = W - (S(170, 150));
     const info = [
-      { lines: [date], size: story ? 104 : 76, weight: 900, color: C.cream, shadow: true },
-      { lines: [when], size: story ? 62 : 46, weight: 800, color: C.gold },
-      place && { ...wrap(g, place, 500, story ? 36 : 28, "Barlow", maxW, 2, story ? 28 : 22), weight: 500, color: C.mist, family: "Barlow" },
-      entry && { lines: [entry], size: story ? 54 : 40, weight: 800, color: C.cream, gap: story ? 16 : 10 },
-      extra && { ...wrap(g, extra, 700, story ? 48 : 32, "Barlow", maxW, Math.min(4, Math.max(2, extra.split("\n").length)), story ? 28 : 20), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: story ? 34 : 20 },
+      { lines: [date], size: S(104, 76), weight: 900, color: C.cream, shadow: true },
+      { lines: [when], size: S(62, 46), weight: 800, color: C.gold },
+      place && { ...wrap(g, place, 500, S(36, 28), "Barlow", maxW, 2, S(28, 22)), weight: 500, color: C.mist, family: "Barlow" },
+      entry && { lines: [entry], size: S(54, 40), weight: 800, color: C.cream, gap: S(16, 10) },
+      extra && { ...wrap(g, extra, 700, S(48, 32), "Barlow", maxW, Math.min(4, Math.max(2, extra.split("\n").length)), S(28, 20)), weight: 700, color: C.cream, family: "Barlow", shadow: true, gap: S(34, 20) },
     ].filter(Boolean);
     for (const b of info) if (b.lines.length === 1 && !b.family) b.size = fitSize(g, b.lines[0], b.weight, b.size, null, maxW);
     const lh = (b) => b.size * 1.18;
-    const ruleGap = story ? 40 : 30;
+    const ruleGap = S(40, 30);
     const infoH = ruleGap + info.reduce((h, b) => h + (b.gap || 0) + b.lines.length * lh(b), 0);
-    const bottomLimit = story ? H - 235 : H - 56;   // ovanför vattnet/ramen
+    const bottomLimit = H - S(235, 56);   // ovanför vattnet/ramen
     const infoTop = bottomLimit - infoH;
 
     if (!pool) {
       const o = opps[0], img = imgs[0];
       const usLeft = first.homeGame !== false; // hemmalaget till vänster, som i en matchtablå
-      const nameSize = story ? 56 : 46, nameGap = nameSize + 14; // luft under skivan inkl. prickar på Å/Ä/Ö
-      const areaTop = y + (story ? 70 : 40), areaBot = infoTop - (story ? 50 : 26);
-      const L = Math.max(120, Math.min(story ? 250 : 236, (areaBot - areaTop - nameGap) / 1.42));
+      const nameSize = S(56, 46), nameGap = nameSize + 14; // luft under skivan inkl. prickar på Å/Ä/Ö
+      const areaTop = y + (S(70, 40)), areaBot = infoTop - (S(50, 26));
+      const L = Math.max(120, Math.min(S(250, 236), (areaBot - areaTop - nameGap) / 1.42));
       const groupH = L * 1.42 + nameGap;                  // från skivans överkant till namnets baslinje
       const cy = areaTop + Math.max(0, (areaBot - areaTop - groupH) / 2) + L * .71;
-      const dx = story ? 280 : 262;
+      const dx = S(280, 262);
       const [lImg, lName, rImg, rName] = usLeft ? [own, OWN, img, o.club] : [img, o.club, own, OWN];
       crest(g, lImg, lName, W / 2 - dx, cy, L);
       crest(g, rImg, rName, W / 2 + dx, cy, L);
-      text(g, "VS", W / 2, cy + (story ? 34 : 28), 900, story ? 104 : 84, C.gold, "center", null, true);
+      text(g, "VS", W / 2, cy + (S(34, 28)), 900, S(104, 84), C.gold, "center", null, true);
       const ny = cy + L * .71 + nameGap;
-      text(g, lName.toUpperCase(), W / 2 - dx, ny, 800, nameSize, C.cream, "center", story ? 440 : 420);
-      text(g, rName.toUpperCase(), W / 2 + dx, ny, 800, nameSize, C.cream, "center", story ? 440 : 420);
+      text(g, lName.toUpperCase(), W / 2 - dx, ny, 800, nameSize, C.cream, "center", S(440, 420));
+      text(g, rName.toUpperCase(), W / 2 + dx, ny, 800, nameSize, C.cream, "center", S(440, 420));
     } else {
       // poolspel: (story) vår logga överst, sedan "HC Wettern möter" och motståndarna i ett rutnät
       let my;
@@ -381,19 +387,19 @@
       } else {
         my = y + 74;
       }
-      rule(g, W / 2, my + (story ? 30 : 26), story ? 380 : 320);
-      text(g, story ? "MÖTER" : "HC WETTERN MÖTER", W / 2, my, 800, story ? 48 : 36, C.gold, "center", null, false, null, 6);
+      rule(g, W / 2, my + (S(30, 26)), S(380, 320));
+      text(g, story ? "MÖTER" : "HC WETTERN MÖTER", W / 2, my, 800, S(48, 36), C.gold, "center", null, false, null, 6);
 
       const n = opps.length, dense = n > 4;
       const cols = n <= 4 ? n : n <= 6 ? 3 : n <= 8 ? 4 : 5;
       const rows = Math.ceil(n / cols);
-      const top = my + (story ? 60 : 44), bottom = infoTop - (story ? 40 : 16);
+      const top = my + (S(60, 44)), bottom = infoTop - (S(40, 16));
       const cellW = (W - 120) / cols, cellH = (bottom - top) / rows;
-      const nameSize = story ? (dense ? 32 : 40) : (dense ? 24 : 30);
-      const timeSize = story ? (dense ? 26 : 32) : (dense ? 21 : 26);
+      const nameSize = S((dense ? 32 : 40), (dense ? 24 : 30));
+      const timeSize = S((dense ? 26 : 32), (dense ? 21 : 26));
       const anyTimes = opps.some((o) => o.times.length);
       const lab = nameSize + 10 + (anyTimes ? timeSize * 1.4 : 0);
-      const L = Math.max(40, Math.min(cellW * .56, (cellH - lab) / 1.42, story ? 220 : 170));
+      const L = Math.max(40, Math.min(cellW * .56, (cellH - lab) / 1.42, S(220, 170)));
       opps.forEach((o, i) => {
         const r = Math.floor(i / cols), inRow = Math.min(cols, n - r * cols), c = i % cols;
         const x = W / 2 + (c - (inRow - 1) / 2) * cellW;
@@ -406,7 +412,7 @@
     }
 
     // infoblock
-    rule(g, W / 2, infoTop, story ? 420 : 340);
+    rule(g, W / 2, infoTop, S(420, 340));
     let iy = infoTop + ruleGap;
     for (const b of info) {
       iy += b.gap || 0;
@@ -442,7 +448,7 @@
     g.beginPath(); roundRect(g, 28, 28, W - 56, H - 56, 46); g.stroke(); g.restore();
 
     // siluett
-    const base = H - (fmt === "story" ? 150 : 62), sc = fmt === "story" ? 1.5 : .8;
+    const t = (H - 1080) / 840, base = H - (62 + 88 * t), sc = .8 + .7 * t;
     g.save(); g.beginPath(); roundRect(g, 30, 30, W - 60, H - 60, 44); g.clip();
     skyline(g, W, base, sc);
     // vågor (Vättern) under siluetten
@@ -620,7 +626,7 @@
   function shareUrl() {
     const url = new URL(location.href); url.search = "";
     if (group) url.searchParams.set("match", group.matches[0].id);
-    if (fmt === "square") url.searchParams.set("format", "square");
+    if (fmt !== "post") url.searchParams.set("format", fmt);
     return url.toString();
   }
   function share() {
