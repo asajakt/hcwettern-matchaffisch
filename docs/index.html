@@ -60,6 +60,10 @@
   .add { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
   .add button { font: 600 .95rem var(--body); padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
   .help { margin: 0; font-size: .82rem; color: var(--muted); }
+  .manual { display: grid; gap: 12px; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; }
+  .manual[hidden] { display: none; }
+  .opp .host { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); margin-left: 6px; }
+  .manual input[type=date], .manual input[type=time] { width: 100%; font: 500 1rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
 
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn { font: 700 1.15rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
@@ -102,10 +106,24 @@
       <label class="field">Lag
         <select id="team"></select>
       </label>
-      <label class="field">Match / matchdag
+      <label class="field" id="matchRow">Match / matchdag
         <select id="match"></select>
       </label>
-      <label class="check"><input type="checkbox" id="past"> Visa även spelade matcher</label>
+      <label class="check" id="pastRow"><input type="checkbox" id="past"> Visa även spelade matcher</label>
+
+      <!-- Lag utan matcher i kalendern (U8P): matchdagen fylls i för hand -->
+      <div class="manual" id="manual" hidden>
+        <p class="help">U8P kallas inte till matcher i kalendern. Fyll i matchdagen själv.</p>
+        <label class="field">Datum
+          <input type="date" id="mDate"></label>
+        <label class="field">Starttid <small>tomt = "Tid meddelas senare"</small>
+          <input type="time" id="mTime"></label>
+        <label class="field">Arrangör <small>klubben som kallar till matchen / poolspelet</small>
+          <select id="mHost"></select></label>
+        <label class="field">Arena
+          <input type="text" id="mArena" list="arenas" maxlength="40" placeholder="t.ex. Vadstena Ishall"></label>
+        <datalist id="arenas"></datalist>
+      </div>
 
       <label class="field" id="priceRow" hidden>Entré (kr)
         <input type="text" id="price" inputmode="numeric" maxlength="4" value="60" placeholder="Tomt = visas inte">
@@ -118,7 +136,7 @@
           <select id="addClub" aria-label="Lägg till motståndare"></select>
           <button type="button" id="addBtn">+ Lägg till</button>
         </div>
-        <p class="help" style="margin-top:6px">Har HC Wettern flera matcher samma dag hamnar alla motståndare här automatiskt, och affischen blir en poolspelsaffisch. Ta bort lag med ×, eller lägg till fler.</p>
+        <p class="help" id="oppsHelp" style="margin-top:6px">Har HC Wettern flera matcher samma dag hamnar alla motståndare här automatiskt, och affischen blir en poolspelsaffisch. Ta bort lag med ×, eller lägg till fler.</p>
       </div>
 
       <div>
@@ -170,6 +188,9 @@
   const DAYS = ["Söndag", "Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag"];
   const MONTHS = ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"];
   const OWN = "HC Wettern";
+  const MANUAL = "U8P";                     // lag utan matcher i kalendern – matchdagen fylls i för hand
+  const HOME_ARENA = "Vadstena Ishall";
+  let pendingManual = null, allClubs = [], ogClubs = [], oppsHelpText = "";
   const UA = navigator.userAgent || "";
   const MOBILE = /iPhone|iPad|iPod|Android/i.test(UA) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(UA));
   const IN_APP = /Instagram|FBAN|FBAV|FB_IAB|Messenger|Snapchat|TikTok|Line\//i.test(UA);
@@ -199,15 +220,28 @@
     }
     groups = [...map.values()].sort((a, b) => a.matches[0].start.localeCompare(b.matches[0].start));
 
-    const teams = [...new Set(groups.map((g) => g.team))].sort((a, b) => a.localeCompare(b, "sv"));
+    const teams = [...new Set([...groups.map((g) => g.team), MANUAL])].sort((a, b) => a.localeCompare(b, "sv"));
     $("team").innerHTML = `<option value="">Alla lag</option>` + teams.map((t) => `<option>${esc(t)}</option>`).join("");
 
-    const clubs = Object.keys(data.clubs).filter((c) => c !== OWN).sort((a, b) => a.localeCompare(b, "sv"));
-    $("addClub").innerHTML = `<option value="">Välj lag…</option>` + clubs.map((c) => `<option>${esc(c)}</option>`).join("");
+    allClubs = Object.keys(data.clubs).filter((c) => c !== OWN).sort((a, b) => a.localeCompare(b, "sv"));
+    // U8P får bara välja motståndare som HC Wettern möter i Östergötlandsserierna
+    ogClubs = allClubs.filter((c) => data.matches.some((m) => m.opponentClub === c && /Östergötland|(^|\s)ÖG(\s|$)/.test(m.series || "")));
+    $("arenas").innerHTML = [...new Set(data.matches.map((m) => m.location).filter(Boolean))].sort((a, b) => a.localeCompare(b, "sv")).map((a) => `<option value="${esc(a)}">`).join("");
+    $("mHost").innerHTML = `<option value="">HC Wettern (hemma)</option>` + ogClubs.map((c) => `<option>${esc(c)}</option>`).join("");
+    oppsHelpText = $("oppsHelp").textContent;
+    fillAddClub();
 
     const wanted = params.get("match");
     const wg = wanted && groups.find((g) => g.matches.some((m) => m.id === wanted));
-    if (wg) { $("team").value = wg.team; if (isPast(wg)) $("past").checked = true; }
+    if (params.get("lag") === MANUAL) {
+      $("team").value = MANUAL;
+      pendingManual = {
+        date: params.get("d") || "", host: params.get("hos") || "", link: true,
+        time: params.get("tid") || "", arena: params.has("arena") ? params.get("arena") : undefined,
+        opps: (params.get("mot") || "").split("|").filter(Boolean),
+      };
+    }
+    else if (wg) { $("team").value = wg.team; if (isPast(wg)) $("past").checked = true; }
     else { try { const t = localStorage.getItem("hcw-team"); if (t && teams.includes(t)) $("team").value = t; } catch {} }
     if (FORMATS[params.get("format")]) setFormat(params.get("format"));
     fillGroups(wg ? wg.key : null);
@@ -223,12 +257,20 @@
     $("download").addEventListener("click", download);
     $("saveClose").addEventListener("click", () => { $("saveOverlay").hidden = true; });
     $("share").addEventListener("click", share);
+    ["mDate", "mTime", "mArena"].forEach((id) => $(id).addEventListener("input", changed));
+    // ny arrangör = ny arena (arrangörens hemmaarena), går att skriva över
+    $("mHost").addEventListener("change", () => { const h = $("mHost").value; $("mArena").value = h ? homeArena(h) : HOME_ARENA; renderOpps(); changed(); });
   }
 
   function isPast(g) { const last = g.matches[g.matches.length - 1]; return new Date(last.end || last.start) < new Date(Date.now() - 3 * 3600e3); }
   function clubsOf(g) { return [...new Set(g.matches.map((m) => m.opponentClub))]; }
 
   function fillGroups(keep) {
+    const manual = isManual();
+    $("manual").hidden = !manual; $("matchRow").hidden = manual; $("pastRow").hidden = manual;
+    $("oppsHelp").textContent = manual ? "Välj motståndare. Flera motståndare ger en poolspelsaffisch." : oppsHelpText;
+    fillAddClub();
+    if (manual) { startManual(pendingManual); pendingManual = null; return; }
     const team = $("team").value, showPast = $("past").checked;
     const list = groups.filter((g) => (!team || g.team === team) && (showPast || !isPast(g)));
     const sel = $("match");
@@ -260,22 +302,70 @@
   }
 
   function renderOpps() {
+    const manual = isManual();
     $("opps").innerHTML = opps.map((o, i) => `
       <div class="opp">
         ${logoSrc(o.club) ? `<img src="${logoSrc(o.club)}" alt="">` : ""}
-        <span class="name">${esc(o.club)}</span>
+        <span class="name">${esc(o.club)}${manual && o.club === $("mHost").value ? `<span class="host">arrangör</span>` : ""}</span>
         <span class="t">${o.times.join(" · ")}</span>
         <button type="button" data-rm="${i}" aria-label="Ta bort ${esc(o.club)}">×</button>
       </div>`).join("") || `<p class="help">Ingen motståndare vald.</p>`;
-    $("opps").querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { opps.splice(+b.dataset.rm, 1); renderOpps(); draw(); }));
+    $("opps").querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { opps.splice(+b.dataset.rm, 1); renderOpps(); changed(); }));
   }
 
   function addClub() {
     const c = $("addClub").value;
     if (!c || opps.some((o) => o.club === c)) return;
     opps.push({ club: c, times: [], on: true });
-    $("addClub").value = ""; renderOpps(); draw();
+    $("addClub").value = ""; renderOpps(); changed();
   }
+  function fillAddClub() {
+    const list = isManual() ? ogClubs : allClubs;
+    $("addClub").innerHTML = `<option value="">Välj lag…</option>` + list.map((c) => `<option>${esc(c)}</option>`).join("");
+  }
+
+  // ---------- U8P: matchdag som fylls i för hand och byggs om till en vanlig "grupp" så att affischen ritas som vanligt
+  function isManual() { return $("team").value === MANUAL; }
+  function ymd(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+  function nextSaturday() { const d = new Date(); d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7); return ymd(d); }
+  // motståndarens hemmaarena, tagen från de andra lagens bortamatcher
+  function homeArena(club) {
+    const n = {};
+    for (const m of data.matches) if (m.opponentClub === club && !m.homeGame && m.location) n[m.location] = (n[m.location] || 0) + 1;
+    return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || "";
+  }
+  function readManual() { try { return JSON.parse(localStorage.getItem("hcw-u8p")) || {}; } catch { return {}; } }
+  function manualState() {
+    return { date: $("mDate").value, time: $("mTime").value, host: $("mHost").value, arena: $("mArena").value.trim(),
+      opps: opps.map((o) => o.club) };
+  }
+  function startManual(s) {
+    s = s || readManual();
+    const today = ymd(new Date());
+    $("mDate").value = s.date && (s.link || s.date >= today) ? s.date : nextSaturday();
+    $("mHost").value = ogClubs.includes(s.host) ? s.host : "";
+    const host = $("mHost").value;
+    $("mArena").value = s.arena !== undefined ? s.arena : host ? homeArena(host) : HOME_ARENA;
+    $("mTime").value = /^\d\d:\d\d$/.test(s.time || "") ? s.time : "";
+    opps = (s.opps || []).filter((c) => typeof c === "string" && data.clubs[c]).map((c) => ({ club: c, times: [], on: true }));
+    $("priceRow").hidden = true;
+    renderOpps(); changed();
+  }
+  function refreshManual() {
+    if (!isManual()) return;
+    const s = manualState(), date = s.date || nextSaturday();
+    const list = opps.length ? opps : [{ club: "", times: [] }];
+    // arrangören skrivs först på platsraden: "Hos Mjölby HC · ProTrain Arena". Ingen serie på den här nivån.
+    const location = [s.host && `Hos ${s.host}`, s.arena].filter(Boolean).join("  ·  ");
+    group = {
+      key: "manual", team: MANUAL, date, manual: true,
+      // bara första matchen bär starttiden, annars blir det "Nedsläpp 09:30–09:30"
+      matches: list.map((o, i) => ({ id: "u8p-" + i, start: date + "T" + (i === 0 && s.time || "00:00"), location, series: "",
+        team: MANUAL, homeGame: !s.host, opponentClub: o.club })),
+    };
+    try { localStorage.setItem("hcw-u8p", JSON.stringify(s)); } catch {}
+  }
+  function changed() { refreshManual(); draw(); }
 
   function setFormat(f) {
     fmt = f;
@@ -626,7 +716,15 @@
 
   function shareUrl() {
     const url = new URL(location.href); url.search = "";
-    if (group) url.searchParams.set("match", group.matches[0].id);
+    if (group && group.manual) {
+      const s = manualState(), p = url.searchParams;
+      p.set("lag", MANUAL); p.set("d", group.date);
+      if (s.host) p.set("hos", s.host);
+      p.set("arena", s.arena);
+      if (s.time) p.set("tid", s.time);
+      if (s.opps.length) p.set("mot", s.opps.join("|"));
+    }
+    else if (group) url.searchParams.set("match", group.matches[0].id);
     if (fmt !== "post") url.searchParams.set("format", fmt);
     return url.toString();
   }

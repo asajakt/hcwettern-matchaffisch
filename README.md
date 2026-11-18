@@ -4,6 +4,7 @@
 
 1. Välj **Lag** i den översta listan (t.ex. A-laget eller U12 - Team 14/15).
 2. Välj **Match / matchdag** i listan under. Har laget flera matcher samma dag visas de som ett **poolspel**, och då hamnar alla motståndare på samma affisch.
+   **U8P** har inga matcher i kalendern. Där fyller du själv i datum, starttid, arrangör (klubben som kallar) och arena, och väljer motståndare bland Östergötlandsklubbarna.
 3. Under **Motståndare** kan du ta bort lag med × eller lägga till fler med *+ Lägg till*. Lagfärger som Blå och Grå visas inte, bara klubbnamnet.
    Under **Anpassa texter** kan du ändra rubriken och lägga till egen text. Tryck **Enter** för ny rad: rubriken får högst 2 rader och den extra texten högst 4.
 4. Välj format: **Inlägg 4:5** (förvalt, 1080×1350 – fyller ett stående Instagram-/Facebookinlägg utan att beskäras), **Story 9:16** (1080×1920) eller **Kvadrat 1:1** (1080×1080).
