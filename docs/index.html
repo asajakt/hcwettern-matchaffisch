@@ -63,7 +63,8 @@
   .manual { display: grid; gap: 12px; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; }
   .manual[hidden] { display: none; }
   .opp .host { font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); margin-left: 6px; }
-  .manual input[type=date], .manual input[type=time] { width: 100%; font: 500 1rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+  .manual input[aria-invalid=true] { border-color: #C0392B; }
+  .manual input[type=date] { width: 100%; font: 500 1rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
 
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn { font: 700 1.15rem var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 12px; border-radius: 10px; border: 0; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
@@ -116,8 +117,8 @@
         <p class="help">U8P kallas inte till matcher i kalendern. Fyll i matchdagen själv.</p>
         <label class="field">Datum
           <input type="date" id="mDate"></label>
-        <label class="field">Starttid <small>tomt = "Tid meddelas senare"</small>
-          <input type="time" id="mTime"></label>
+        <label class="field">Starttid <small>24-timmarsklocka, t.ex. 09:30 eller 14:00. Tomt = "Tid meddelas senare"</small>
+          <input type="text" id="mTime" inputmode="numeric" maxlength="5" placeholder="tt:mm" autocomplete="off"></label>
         <label class="field">Arrangör <small>klubben som kallar till matchen / poolspelet</small>
           <select id="mHost"></select></label>
         <label class="field">Arena
@@ -261,7 +262,14 @@
     $("download").addEventListener("click", download);
     $("saveClose").addEventListener("click", () => { $("saveOverlay").hidden = true; });
     $("share").addEventListener("click", share);
-    ["mDate", "mTime", "mArena"].forEach((id) => $(id).addEventListener("input", changed));
+    ["mDate", "mArena"].forEach((id) => $(id).addEventListener("input", changed));
+    // 24-timmarsklocka: bara siffror, kolon sätts in automatiskt ("930" -> "09:30" när fältet lämnas)
+    $("mTime").addEventListener("input", () => {
+      const d = $("mTime").value.replace(/\D/g, "").slice(0, 4);
+      $("mTime").value = d.length > 2 ? d.slice(0, 2) + ":" + d.slice(2) : d;
+      changed();
+    });
+    $("mTime").addEventListener("blur", () => { const t = time24($("mTime").value, true); if (t) $("mTime").value = t; changed(); });
     // ny arrangör = ny arena (arrangörens hemmaarena), går att skriva över
     $("mHost").addEventListener("change", () => { const h = $("mHost").value; $("mArena").value = h ? homeArena(h) : HOME_ARENA; renderOpps(); changed(); });
   }
@@ -339,8 +347,20 @@
     return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || "";
   }
   function readManual() { try { return JSON.parse(localStorage.getItem("hcw-u8p")) || {}; } catch { return {}; } }
+  // "930", "0930", "9:30" -> "09:30"; ogiltig tid (t.ex. 25:00 eller 9:75) -> "".
+  // Bara timmar ("9" -> "09:00") godtas först när fältet lämnas (loose), annars hoppar affischen medan man skriver.
+  function time24(v, loose) {
+    const d = String(v || "").replace(/\D/g, "");
+    if (!loose && d.length < 3) return "";
+    const p = d.length === 3 ? "0" + d : d.length === 2 || d.length === 1 ? d.padStart(2, "0") + "00" : d;
+    if (p.length !== 4) return "";
+    const h = +p.slice(0, 2), m = +p.slice(2);
+    return h < 24 && m < 60 ? p.slice(0, 2) + ":" + p.slice(2) : "";
+  }
   function manualState() {
-    return { date: $("mDate").value, time: $("mTime").value, host: $("mHost").value, arena: $("mArena").value.trim(),
+    const raw = $("mTime").value.trim(), time = time24(raw);
+    $("mTime").setAttribute("aria-invalid", String(raw.replace(/\D/g, "").length >= 3 && !time));
+    return { date: $("mDate").value, time, host: $("mHost").value, arena: $("mArena").value.trim(),
       opps: opps.map((o) => o.club) };
   }
   function startManual(s) {
@@ -350,7 +370,7 @@
     $("mHost").value = ogClubs.includes(s.host) ? s.host : "";
     const host = $("mHost").value;
     $("mArena").value = s.arena !== undefined ? s.arena : host ? homeArena(host) : HOME_ARENA;
-    $("mTime").value = /^\d\d:\d\d$/.test(s.time || "") ? s.time : "";
+    $("mTime").value = time24(s.time);
     opps = (s.opps || []).filter((c) => typeof c === "string" && data.clubs[c]).map((c) => ({ club: c, times: [], on: true }));
     $("priceRow").hidden = true;
     renderOpps(); changed();
