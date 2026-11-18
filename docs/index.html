@@ -220,7 +220,10 @@
     }
     groups = [...map.values()].sort((a, b) => a.matches[0].start.localeCompare(b.matches[0].start));
 
-    const teams = [...new Set([...groups.map((g) => g.team), MANUAL])].sort((a, b) => a.localeCompare(b, "sv"));
+    // fast ordning, äldst först; lag som inte finns i listan hamnar sist i bokstavsordning
+    const ORDER = ["A-laget", "U15/16", "U12", "U11", "U10P", "U9P", MANUAL, "Flick"];
+    const rank = (t) => (ORDER.indexOf(t) + 1) || ORDER.length + 1;
+    const teams = [...new Set([...groups.map((g) => g.team), MANUAL])].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, "sv"));
     $("team").innerHTML = `<option value="">Alla lag</option>` + teams.map((t) => `<option>${esc(t)}</option>`).join("");
 
     allClubs = Object.keys(data.clubs).filter((c) => c !== OWN).sort((a, b) => a.localeCompare(b, "sv"));
