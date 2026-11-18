@@ -227,8 +227,9 @@
     $("team").innerHTML = `<option value="">Alla lag</option>` + teams.map((t) => `<option>${esc(t)}</option>`).join("");
 
     allClubs = Object.keys(data.clubs).filter((c) => c !== OWN).sort((a, b) => a.localeCompare(b, "sv"));
-    // U8P får bara välja motståndare som HC Wettern möter i Östergötlandsserierna
-    ogClubs = allClubs.filter((c) => data.matches.some((m) => m.opponentClub === c && /Östergötland|(^|\s)ÖG(\s|$)/.test(m.series || "")));
+    // U8P får bara välja motståndare som HC Wettern möter i Östergötlandsserierna.
+    // Sammanslagna lag (med "/", t.ex. Valdemarsvik/Guts) finns bara för äldre lag och tas bort här.
+    ogClubs = allClubs.filter((c) => !c.includes("/") && data.matches.some((m) => m.opponentClub === c && /Östergötland|(^|\s)ÖG(\s|$)/.test(m.series || "")));
     $("arenas").innerHTML = [...new Set(data.matches.map((m) => m.location).filter(Boolean))].sort((a, b) => a.localeCompare(b, "sv")).map((a) => `<option value="${esc(a)}">`).join("");
     $("mHost").innerHTML = `<option value="">HC Wettern (hemma)</option>` + ogClubs.map((c) => `<option>${esc(c)}</option>`).join("");
     oppsHelpText = $("oppsHelp").textContent;
