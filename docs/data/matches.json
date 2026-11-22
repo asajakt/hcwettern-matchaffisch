@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T11:00:51Z",
+ "updated": "2026-11-22T11:24:26Z",
  "source": "https://cal.svenskalag.se/10862",
  "ownClub": "HC Wettern",
  "ownLogo": "logos/hc-wettern.png",
@@ -52,9 +52,6 @@
   "Skillingaryds IS": {
    "logo": "logos/skillingaryds-is.png"
   },
-  "TAIF Löfstad": {
-   "logo": null
-  },
   "Tidaholms HF": {
    "logo": "logos/tidaholms-hf.png"
   },
@@ -90,25 +87,6 @@
   }
  },
  "matches": [
-  {
-   "id": "18648982",
-   "start": "2025-11-21T19:00",
-   "end": "2025-11-21T21:00",
-   "meet": null,
-   "location": "Tranås Åkeri Arena",
-   "series": "HockeyTrean Södra D",
-   "team": "A-laget",
-   "teamSlug": "HCW-A-lag",
-   "home": "TAIF Löfstad",
-   "away": "HC Wettern",
-   "homeGame": false,
-   "listedHome": false,
-   "us": "HC Wettern",
-   "opponent": "TAIF Löfstad",
-   "opponentClub": "TAIF Löfstad",
-   "opponentVariant": "",
-   "usVariant": ""
-  },
   {
    "id": "19153263",
    "start": "2025-11-22T10:00",
